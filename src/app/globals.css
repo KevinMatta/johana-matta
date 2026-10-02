@@ -905,33 +905,6 @@ footer {
   .hero-scroll-line { animation: none; }
 }
 
-/* ─── Debug switches (?debug=…) ── */
-html.dbg-nomask .mwin-bg { display: none; }
-
-
-.dbg-panel {
-  position: fixed;
-  left: 8px;
-  bottom: 8px;
-  z-index: 9999;
-  max-width: calc(100vw - 16px);
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.88);
-  color: #fff;
-  font: 11px/1.4 ui-monospace, monospace;
-  border-radius: 6px;
-}
-.dbg-panel button { font: inherit; color: #fff; background: #333; border: 0; padding: 5px 8px; border-radius: 4px; }
-.dbg-panel .dbg-head { background: none; padding: 0; font-weight: bold; }
-.dbg-panel table { border-collapse: collapse; margin: 6px 0; }
-.dbg-panel td, .dbg-panel th { padding: 1px 6px 1px 0; text-align: left; }
-.dbg-panel tr.bad td { color: #ff6b6b; }
-.dbg-panel tr.meh td { color: #ffd166; }
-.dbg-flags { display: grid; gap: 4px; margin: 6px 0; }
-.dbg-actions { display: flex; gap: 6px; }
-.dbg-live { font-size: 15px; font-weight: bold; margin-top: 4px; }
-.dbg-live.bad { color: #ff6b6b; }
-
 /* ════════════════════════════════════════
    SCROLL-LINKED MOTION — native CSS scroll timelines
    The browser evaluates these together with the scroll itself, so they stay
@@ -952,55 +925,50 @@ html.dbg-nomask .mwin-bg { display: none; }
 @keyframes pgi-drift   { from { transform: translateX(-8%); } to { transform: translateX(8%); } }
 
 @supports (animation-timeline: view()) {
-  html:not(.dbg-nocss) .pf-wrap { view-timeline: --pf; }
-  html:not(.dbg-nocss) .carousel-track {
+  .pf-wrap { view-timeline: --pf; }
+  .carousel-track {
     animation: pf-x linear both;
     animation-timeline: --pf;
     animation-range: contain 0% contain 100%;
   }
-  html:not(.dbg-nocss) .pf-progress-bar {
+  .pf-progress-bar {
     animation: pf-bar linear both;
     animation-timeline: --pf;
     animation-range: contain 0% contain 100%;
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    html:not(.dbg-nocss) .hero { view-timeline: --hero; }
-    html:not(.dbg-nocss) .hero-img-wrapper {
+    .hero { view-timeline: --hero; }
+    .hero-img-wrapper {
       animation: hero-drift linear both;
       animation-timeline: --hero;
       animation-range: exit 0% exit 100%;
     }
-    html:not(.dbg-nocss) .hero-content {
+    .hero-content {
       animation: hero-lift linear both;
       animation-timeline: --hero;
       animation-range: exit 0% exit 70%;
     }
 
-    html:not(.dbg-nocss) .about-image { view-timeline: --about-img; }
-    html:not(.dbg-nocss) .about-image-el {
+    .about-image { view-timeline: --about-img; }
+    .about-image-el {
       animation: about-drift linear both;
       animation-timeline: --about-img;
       animation-range: cover 0% cover 100%;
     }
 
-    html:not(.dbg-nocss) .mword { view-timeline: --word; }
-    html:not(.dbg-nocss) .mword-in {
+    .mword { view-timeline: --word; }
+    .mword-in {
       animation: word-rtl linear both;
       animation-timeline: --word;
       animation-range: cover 0% cover 100%;
       will-change: transform;
     }
-    html:not(.dbg-nocss) #excelencia .mword-in { animation-name: word-ltr; }
+    #excelencia .mword-in { animation-name: word-ltr; }
 
-    html:not(.dbg-nocss):not(.dbg-noparallax) .pgi-inner {
+    .pgi-inner {
       animation: pgi-drift linear both;
       animation-timeline: --pf;
     }
   }
 }
-html.dbg-nowords .mword-in { animation: none !important; }
-html.dbg-noparallax .hero-img-wrapper,
-html.dbg-noparallax .hero-content,
-html.dbg-noparallax .about-image-el { animation: none !important; }
-html.dbg-noanim * { animation: none !important; }

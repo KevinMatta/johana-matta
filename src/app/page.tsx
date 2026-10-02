@@ -6,7 +6,6 @@ import Services from "@/components/Services";
 import Portfolio from "@/components/Portfolio";
 import Footer from "@/components/Footer";
 import ScrollRefresh from "@/components/ScrollRefresh";
-import DebugPanel from "@/components/DebugPanel";
 
 export default function Home() {
   return (
@@ -21,7 +20,6 @@ export default function Home() {
       </main>
       <Footer />
       <ScrollRefresh />
-      <DebugPanel />
     </>
   );
 }
