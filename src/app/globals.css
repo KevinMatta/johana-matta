@@ -45,7 +45,7 @@ body {
   padding: 0.06em 0.12em 0.1em 0;
   margin: -0.06em -0.12em -0.1em 0;
 }
-.line-in { display: block; will-change: transform; }
+.line-in { display: block; }
 
 /* ─── NAV ─────────────────────────────── */
 .nav {
@@ -63,7 +63,6 @@ body {
 
 .nav.scrolled {
   background: #0c0c0a;
-  backdrop-filter: blur(14px);
   padding: 15px 52px;
 }
 
@@ -347,7 +346,7 @@ body {
   left: 7%;
 }
 #w1l .mwin-bg {
-  background-image: url('/images/portfolio-15.jpg');
+  background-image: url('/images/mask/w1l.jpg');
   background-size: auto 100vh;
   background-position: 0% 50%;
 }
@@ -358,7 +357,7 @@ body {
   left: 68%;
 }
 #w1r .mwin-bg {
-  background-image: url('/images/portfolio-05.jpg');
+  background-image: url('/images/mask/w1r.jpg');
   background-size: cover;
   background-position: center 30%;
 }
@@ -369,7 +368,7 @@ body {
   left: 7%;
 }
 #w2l .mwin-bg {
-  background-image: url('/images/portfolio-09.jpg');
+  background-image: url('/images/mask/w2l.jpg');
   background-size: auto 140vh;
   background-position: 0% 65%;
 }
@@ -380,7 +379,7 @@ body {
   left: 68%;
 }
 #w2r .mwin-bg {
-  background-image: url('/images/portfolio-26.JPG');
+  background-image: url('/images/mask/w2r.jpg');
   background-size: auto 110vh;
   background-position: 65% 50%;
 }
@@ -719,12 +718,13 @@ footer {
 
 .footer-logo {
   font-family: 'Glorifydemo', sans-serif;
-  font-size: 2.4rem;
+  font-size: clamp(1.6rem, 6.4vw, 2.4rem);
   letter-spacing: 0.18em;
   line-height: 1;
   color: #f0ebe3;
 }
 
+.footer-logo .word { white-space: nowrap; }
 .footer-logo .ch { display: inline-block; }
 .footer-logo { overflow: hidden; }
 
@@ -823,6 +823,10 @@ footer {
   .mcontainer { padding-right: 0; }
   /* switch all windows to cover on medium screens so face always fills the crop */
   .mwin-bg { background-size: cover !important; }
+  #w1l .mwin-bg { background-image: url('/images/mask/w1l-m.jpg'); }
+  #w1r .mwin-bg { background-image: url('/images/mask/w1r-m.jpg'); }
+  #w2l .mwin-bg { background-image: url('/images/mask/w2l-m.jpg'); }
+  #w2r .mwin-bg { background-image: url('/images/mask/w2r-m.jpg'); }
   #w1l .mwin-bg { background-position: 85% 20% !important; }
   #w1r .mwin-bg { background-position: center 15% !important; }
   #w2l .mwin-bg { background-position: 80% 15% !important; }

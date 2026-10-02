@@ -33,8 +33,12 @@ export default function Footer() {
 
         <div className="footer-brand">
           <div className="footer-logo" aria-label="Johana Matta">
-            {"JOHANA MATTA".split("").map((c, i) => (
-              <span className="ch" aria-hidden="true" key={i}>{c === " " ? "\u00a0" : c}</span>
+            {/* letters grouped per word so a line can only break between words */}
+            {["JOHANA", "MATTA"].map((word, w) => (
+              <span className="word" aria-hidden="true" key={word}>
+                {w > 0 && " "}
+                {word.split("").map((c, i) => <span className="ch" key={i}>{c}</span>)}
+              </span>
             ))}
           </div>
           <div className="footer-tagline">Makeup Artistry</div>
