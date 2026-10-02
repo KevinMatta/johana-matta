@@ -902,3 +902,40 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .hero-scroll-line { animation: none; }
 }
+
+/* ─── Debug switches (?debug=…) ── */
+html.dbg-nomask .mwin-bg { display: none; }
+
+/* ?debug=cssw — words driven by CSS scroll-driven animations (compositor, no JS) */
+@keyframes word-rtl { from { transform: translateX(60vw); }  to { transform: translateX(-120vw); } }
+@keyframes word-ltr { from { transform: translateX(-120vw); } to { transform: translateX(60vw); } }
+@supports (animation-timeline: view()) {
+  html.dbg-cssw #elegancia,
+  html.dbg-cssw #excelencia {
+    animation: word-rtl linear both;
+    animation-timeline: view();
+    animation-range: cover;
+  }
+  html.dbg-cssw #excelencia { animation-name: word-ltr; }
+}
+
+.dbg-panel {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 9999;
+  max-width: calc(100vw - 16px);
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  font: 11px/1.4 ui-monospace, monospace;
+  border-radius: 6px;
+}
+.dbg-panel button { font: inherit; color: #fff; background: #333; border: 0; padding: 5px 8px; border-radius: 4px; }
+.dbg-panel .dbg-head { background: none; padding: 0; font-weight: bold; }
+.dbg-panel table { border-collapse: collapse; margin: 6px 0; }
+.dbg-panel td, .dbg-panel th { padding: 1px 6px 1px 0; text-align: left; }
+.dbg-panel tr.bad td { color: #ff6b6b; }
+.dbg-panel tr.meh td { color: #ffd166; }
+.dbg-flags { display: grid; gap: 4px; margin: 6px 0; }
+.dbg-actions { display: flex; gap: 6px; }

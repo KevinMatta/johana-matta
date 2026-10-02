@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { dbg } from "@/lib/debug";
 
 export default function Hero() {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -21,6 +22,8 @@ export default function Hero() {
         .from(".hero-name .line-in", { yPercent: 115, rotate: 3, duration: 1.2, ease: "expo.out", stagger: 0.12 }, 0.45)
         .from(".hero-tagline",   { opacity: 0, y: 14, duration: 0.8 }, 0.95)
         .from(".hero-scroll-wrap", { opacity: 0, duration: 0.8 }, 1.2);
+
+      if (dbg("noparallax")) return;
 
       // Scroll: photo drifts down, text lifts away
       gsap.to(wrapperRef.current, {

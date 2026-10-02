@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { dbg } from "@/lib/debug";
 
 function countUp(el: HTMLElement, end: number, duration: number) {
   const startTime = performance.now();
@@ -37,6 +38,8 @@ export default function About() {
       gsap.timeline({ scrollTrigger: { trigger: ".about-image", start: "top 80%" } })
         .fromTo(".about-image", { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.5, ease: "expo.inOut" })
         .fromTo(".about-image-el", { scale: 1.4 }, { scale: 1.12, duration: 2, ease: "expo.out" }, 0.2);
+
+      if (dbg("noparallax")) return;
 
       gsap.fromTo(".about-image-el", { yPercent: -5 }, {
         yPercent: 5,

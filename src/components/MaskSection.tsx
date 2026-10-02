@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import gsap from "gsap";
 import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { dbg } from "@/lib/debug";
 
 export default function MaskSection() {
   useEffect(() => {
@@ -54,6 +55,8 @@ export default function MaskSection() {
           });
         });
       }
+
+      if (dbg("nowords") || dbg("cssw")) return;
 
       /* ELEGANCIA — sweeps right → left as you scroll */
       gsap.fromTo(

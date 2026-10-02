@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { dbg } from "@/lib/debug";
 
 const images = [
   "/images/portfolio-03.jpg",
@@ -92,7 +93,7 @@ export default function Portfolio() {
               },
             });
 
-            if (!still) {
+            if (!still && !dbg("noparallax")) {
               /* Each photo drifts inside its frame while the track moves */
               gsap.utils.toArray<HTMLElement>(".pgi").forEach((card) => {
                 gsap.fromTo(
