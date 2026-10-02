@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import gsap from "gsap";
 
 const images = [
   "/images/portfolio-03.jpg",
@@ -18,104 +17,170 @@ const images = [
   "/images/portfolio-29.jpeg",
 ];
 
-const GAP = 4;
-
-function calcScrollDist(outerEl: HTMLDivElement, count: number) {
-  const vw = outerEl.clientWidth;
-  const perPage = vw < 480 ? 1 : vw < 860 ? 2 : 3;
-  const itemW = (vw - (perPage - 1) * GAP) / perPage;
-  return Math.max(0, count * itemW + (count - 1) * GAP - vw);
-}
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export default function Portfolio() {
-  const wrapperRef  = useRef<HTMLDivElement>(null);
-  const sectionRef  = useRef<HTMLElement>(null);
-  const outerRef    = useRef<HTMLDivElement>(null);
-  const trackRef    = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const lockUntil = useRef(0);
+  const targetRef = useRef(0); // latest requested slide, so fast clicks keep stacking
+  const count = images.length;
 
+  const slides = () =>
+    Array.from(trackRef.current?.children ?? []) as HTMLElement[];
+
+  const goTo = useCallback((i: number) => {
+    const track = trackRef.current;
+    const el = track && (Array.from(track.children)[i] as HTMLElement | undefined);
+    if (!track || !el) return;
+    targetRef.current = i;
+    lockUntil.current = performance.now() + 700; // ignore scroll sync mid-animation
+    track.scrollTo({
+      left: el.offsetLeft - (track.clientWidth - el.clientWidth) / 2,
+      behavior: "smooth",
+    });
+  }, []);
+
+  // Track which slide is centred (native scroll + rAF throttle, no scroll-jacking)
   useEffect(() => {
-    let ctx: gsap.Context;
-
-    const init = async () => {
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
-
-      const count = images.length;
-
-      const setWrapperHeight = () => {
-        if (!wrapperRef.current || !outerRef.current) return;
-        const dist = calcScrollDist(outerRef.current, count);
-        wrapperRef.current.style.height = `${dist + window.innerHeight}px`;
-      };
-
-      setWrapperHeight();
-      ScrollTrigger.addEventListener("refresh", setWrapperHeight);
-
-      ctx = gsap.context(() => {
-        gsap.from(".portfolio-hdr", {
-          opacity: 0, y: 22, duration: 0.5, ease: "power2.out",
-          scrollTrigger: { trigger: wrapperRef.current, start: "top 78%" },
-        });
-        gsap.from(".carousel-outer", {
-          opacity: 0, y: 20, duration: 0.5, ease: "power2.out",
-          scrollTrigger: { trigger: wrapperRef.current, start: "top 78%" },
-          delay: 0.1,
-        });
-
-        if (outerRef.current && trackRef.current && wrapperRef.current) {
-          const dist = calcScrollDist(outerRef.current, count);
-          if (dist > 0) {
-            gsap.to(trackRef.current, {
-              x: () => -calcScrollDist(outerRef.current!, count),
-              ease: "none",
-              scrollTrigger: {
-                trigger: wrapperRef.current,
-                start: "top top",
-                end: () => `+=${calcScrollDist(outerRef.current!, count)}`,
-                scrub: true,
-                invalidateOnRefresh: true,
-              },
-            });
-          }
-        }
-      }, sectionRef);
-
-      return () => ScrollTrigger.removeEventListener("refresh", setWrapperHeight);
+    const track = trackRef.current;
+    if (!track) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const mid = track.scrollLeft + track.clientWidth / 2;
+      let best = 0;
+      let bestDist = Infinity;
+      slides().forEach((el, i) => {
+        const d = Math.abs(el.offsetLeft + el.clientWidth / 2 - mid);
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      if (performance.now() > lockUntil.current) targetRef.current = best;
+      setActive(best);
     };
-
-    const timer = setTimeout(() => { init(); }, 100);
-
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    track.addEventListener("scroll", onScroll, { passive: true });
+    update();
     return () => {
-      clearTimeout(timer);
-      if (ctx) ctx.revert();
+      track.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
     };
   }, []);
 
-  return (
-    <div ref={wrapperRef}>
-      <section className="portfolio" id="portfolio" ref={sectionRef}>
-        <div className="portfolio-hdr">
-          <span className="section-label">Portafolio</span>
-          <h2 className="portfolio-title">Proyectos destacados</h2>
-        </div>
+  // Drag-to-scroll for mouse (touch already scrolls natively)
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    let startX = 0, startLeft = 0, dragging = false, moved = false;
 
-        <div className="carousel-outer" ref={outerRef}>
-          <div className="carousel-track" ref={trackRef}>
-            {images.map((src, i) => (
-              <div className="pgi" key={i}>
-                <Image
-                  className="pgi-img"
-                  src={src}
-                  alt={`Trabajo de Johana Matta ${i + 1}`}
-                  fill
-                  sizes="(max-width:480px) 92vw, (max-width:860px) 46vw, 30vw"
-                  style={{ objectFit: "cover" }}
-                />
-              </div>
-            ))}
-          </div>
+    const down = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      dragging = true; moved = false;
+      startX = e.clientX; startLeft = track.scrollLeft;
+    };
+    const move = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) > 4) {
+        moved = true;
+        track.classList.add("dragging");
+        track.setPointerCapture(e.pointerId);
+      }
+      if (moved) track.scrollLeft = startLeft - dx;
+    };
+    const up = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (moved) {
+        track.classList.remove("dragging");
+        // re-enable snap and settle on the nearest slide
+        const mid = track.scrollLeft + track.clientWidth / 2;
+        let best = 0, bestDist = Infinity;
+        slides().forEach((el, i) => {
+          const d = Math.abs(el.offsetLeft + el.clientWidth / 2 - mid);
+          if (d < bestDist) { bestDist = d; best = i; }
+        });
+        goTo(best);
+      }
+    };
+    track.addEventListener("pointerdown", down);
+    track.addEventListener("pointermove", move);
+    track.addEventListener("pointerup", up);
+    track.addEventListener("pointercancel", up);
+    return () => {
+      track.removeEventListener("pointerdown", down);
+      track.removeEventListener("pointermove", move);
+      track.removeEventListener("pointerup", up);
+      track.removeEventListener("pointercancel", up);
+    };
+  }, [goTo]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); goTo(Math.min(count - 1, targetRef.current + 1)); }
+    if (e.key === "ArrowLeft")  { e.preventDefault(); goTo(Math.max(0, targetRef.current - 1)); }
+  };
+
+  return (
+    <section className="portfolio" id="portfolio" aria-roledescription="carrusel" aria-label="Portafolio">
+      <div className="portfolio-hdr">
+        <span className="section-label">Portafolio</span>
+        <h2 className="portfolio-title">Proyectos destacados</h2>
+      </div>
+
+      <div
+        className="carousel-track"
+        ref={trackRef}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+      >
+        {images.map((src, i) => (
+          <figure
+            className={`pgi${i === active ? " is-active" : ""}`}
+            key={src}
+            aria-roledescription="diapositiva"
+            aria-label={`${i + 1} de ${count}`}
+            onClick={() => i !== active && goTo(i)}
+          >
+            <Image
+              className="pgi-img"
+              src={src}
+              alt={`Trabajo de Johana Matta ${i + 1}`}
+              fill
+              sizes="(max-width:600px) 78vw, (max-width:1100px) 44vw, 30vw"
+              draggable={false}
+              priority={i < 2}
+            />
+            <figcaption className="pgi-num">{pad(i + 1)}</figcaption>
+          </figure>
+        ))}
+      </div>
+
+      <div className="carousel-controls">
+        <button
+          className="carousel-btn"
+          onClick={() => goTo(Math.max(0, targetRef.current - 1))}
+          disabled={active === 0}
+          aria-label="Anterior"
+        >
+          ←
+        </button>
+        <div className="carousel-status" aria-live="polite">
+          <span className="carousel-count">
+            <b>{pad(active + 1)}</b> / {pad(count)}
+          </span>
+          <span className="carousel-progress" aria-hidden="true">
+            <span style={{ transform: `scaleX(${(active + 1) / count})` }} />
+          </span>
         </div>
-      </section>
-    </div>
+        <button
+          className="carousel-btn"
+          onClick={() => goTo(Math.min(count - 1, targetRef.current + 1))}
+          disabled={active === count - 1}
+          aria-label="Siguiente"
+        >
+          →
+        </button>
+      </div>
+    </section>
   );
 }
