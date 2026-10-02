@@ -21,6 +21,7 @@ export default function DebugPanel() {
   const [flags, setFlags] = useState<Set<string> | null>(null);
   const [rows, setRows] = useState<[string, Stat][]>([]);
   const [open, setOpen] = useState(true);
+  const [live, setLive] = useState<number | null>(null);
   const stats = useRef<Record<string, Stat>>({});
 
   useEffect(() => {
@@ -29,10 +30,6 @@ export default function DebugPanel() {
     setFlags(f);
     if (!f) return;
     f.forEach((k) => document.documentElement.classList.add(`dbg-${k}`));
-
-    let lastScroll = 0;
-    const onScroll = () => { lastScroll = performance.now(); };
-    window.addEventListener("scroll", onScroll, { passive: true });
 
     let tops: [string, number][] = [];
     const measure = () => {
@@ -46,11 +43,20 @@ export default function DebugPanel() {
 
     let raf = 0;
     let prev = performance.now();
+    let lastY = window.scrollY;
+    let lastMove = 0;
+    const live: number[] = [];
     const loop = (t: number) => {
       const dt = t - prev;
       prev = t;
-      // only count frames while the user is actually scrolling
-      if (t - lastScroll < 120 && dt < 1000) {
+      // Scrolling = scroll position changed since the previous frame
+      // (does not depend on scroll events, which some phones throttle)
+      const y = window.scrollY;
+      if (y !== lastY) { lastMove = t; lastY = y; }
+      const scrolling = t - lastMove < 150;
+      if (scrolling && dt < 1000) {
+        live.push(dt);
+        if (live.length > 30) live.shift();
         const mid = window.scrollY + window.innerHeight / 2;
         let cur = tops[0]?.[0];
         for (const [id, top] of tops) if (top <= mid) cur = id;
@@ -66,10 +72,12 @@ export default function DebugPanel() {
     };
     raf = requestAnimationFrame(loop);
 
-    const ui = setInterval(() => setRows(Object.entries(stats.current)), 500);
+    const ui = setInterval(() => {
+      setRows(Object.entries(stats.current));
+      setLive(live.length ? Math.round(1000 / (live.reduce((a, b) => a + b, 0) / live.length)) : null);
+    }, 400);
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
       clearInterval(mt);
       clearInterval(ui);
@@ -102,6 +110,9 @@ export default function DebugPanel() {
       <button className="dbg-head" onClick={() => setOpen(!open)}>
         Diagnóstico {open ? "▾" : "▸"}
       </button>
+      <div className={`dbg-live${live !== null && live < 45 ? " bad" : ""}`}>
+        FPS ahora: {live ?? "— (haz scroll)"}
+      </div>
       {open && (
         <>
           <table>

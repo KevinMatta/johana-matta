@@ -939,3 +939,5 @@ html.dbg-nomask .mwin-bg { display: none; }
 .dbg-panel tr.meh td { color: #ffd166; }
 .dbg-flags { display: grid; gap: 4px; margin: 6px 0; }
 .dbg-actions { display: flex; gap: 6px; }
+.dbg-live { font-size: 15px; font-weight: bold; margin-top: 4px; }
+.dbg-live.bad { color: #ff6b6b; }
