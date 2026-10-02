@@ -37,6 +37,16 @@ body {
   min-height: 100%;
 }
 
+/* ─── Masked line reveal (text rises out of its own line) ── */
+.line {
+  display: block;
+  overflow: hidden;
+  /* room for italics / descenders so the mask does not crop glyphs */
+  padding: 0.06em 0.12em 0.1em 0;
+  margin: -0.06em -0.12em -0.1em 0;
+}
+.line-in { display: block; }
+
 /* ─── NAV ─────────────────────────────── */
 .nav {
   position: fixed;
@@ -53,7 +63,6 @@ body {
 
 .nav.scrolled {
   background: #0c0c0a;
-  backdrop-filter: blur(14px);
   padding: 15px 52px;
 }
 
@@ -157,10 +166,32 @@ body {
   font-weight: 300;
 }
 
-.hero-scroll {
+.hero-scroll-wrap {
   position: absolute;
   bottom: 44px;
   right: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero-scroll-line {
+  width: 1px;
+  height: 56px;
+  background: rgba(240, 235, 227, 0.5);
+  transform-origin: top;
+  animation: scroll-cue 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes scroll-cue {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  45%  { transform: scaleY(1); transform-origin: top; }
+  55%  { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+.hero-scroll {
   font-size: 0.54rem;
   letter-spacing: 0.38em;
   text-transform: uppercase;
@@ -264,14 +295,17 @@ body {
    MASK SCROLL SECTION — Parallax Effect
    Structure mirrors parallax-effect-animation exactly:
    all children position:relative with top/left offsets,
-   overflow:hidden on section clips overflow.
-   background-attachment:fixed = image fixed to viewport,
-   element scrolls = crop window reveals different image area.
+   overflow:clip on section clips overflow.
+   Each window clips (clip-path) a position:fixed image layer, which
+   looks exactly like background-attachment:fixed but is composited
+   by the GPU instead of repainted on every scroll frame.
    ════════════════════════════════════════ */
 .mask-section {
   position: relative;
   background: var(--light);
-  overflow: hidden;
+  /* clip, not hidden: hidden would make it a scroll container and CSS
+     scroll timelines inside would measure against it instead of the page */
+  overflow: clip;
 }
 
 .mcontainer {
@@ -286,18 +320,35 @@ body {
 .mwin {
   position: relative;
   height: 380px;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: auto 100vh;
+  clip-path: inset(0);
   z-index: 2;
 }
+
+/* Fixed to the viewport → the window "scans" across the image as you scroll */
+.mwin-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh; /* ignore mobile URL-bar resizes */
+  background-repeat: no-repeat;
+  background-size: auto 100vh;
+  pointer-events: none;
+  visibility: hidden;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.mwin.in-view .mwin-bg { visibility: visible; }
 
 /* ── Windows — exact Webflow dimensions ── */
 #w1l {
   width: 25%;
   top: 25vh;
   left: 7%;
-  background-image: url('/images/portfolio-15.jpg');
+}
+#w1l .mwin-bg {
+  background-image: url('/images/mask/w1l.jpg');
   background-size: auto 100vh;
   background-position: 0% 50%;
 }
@@ -306,7 +357,9 @@ body {
   width: 25%;
   top: -11.4vh;
   left: 68%;
-  background-image: url('/images/portfolio-05.jpg');
+}
+#w1r .mwin-bg {
+  background-image: url('/images/mask/w1r.jpg');
   background-size: cover;
   background-position: center 30%;
 }
@@ -315,7 +368,9 @@ body {
   width: 25%;
   top: -18vh;
   left: 7%;
-  background-image: url('/images/portfolio-09.jpg');
+}
+#w2l .mwin-bg {
+  background-image: url('/images/mask/w2l.jpg');
   background-size: auto 140vh;
   background-position: 0% 65%;
 }
@@ -324,7 +379,9 @@ body {
   width: 25%;
   top: -43.6vh;
   left: 68%;
-  background-image: url('/images/portfolio-26.JPG');
+}
+#w2r .mwin-bg {
+  background-image: url('/images/mask/w2r.jpg');
   background-size: auto 110vh;
   background-position: 65% 50%;
 }
@@ -424,6 +481,7 @@ body {
 }
 
 .service {
+  position: relative;
   padding: 52px 0;
   border-bottom: 1px solid rgba(12, 12, 10, 0.09);
   display: grid;
@@ -457,6 +515,21 @@ body {
   line-height: 1.1;
   margin-bottom: 14px;
 }
+
+.service-line {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.55;
+  transform-origin: left;
+}
+
+.service-num, .service-name { transition: opacity 0.4s, color 0.4s, transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.service:hover .service-num  { opacity: 0.7; color: var(--gold); }
+.service:hover .service-name { transform: translateX(8px); }
 
 .service-desc {
   font-size: 0.9rem;
@@ -504,14 +577,63 @@ body {
   flex-shrink: 0;
 }
 
+/* Wider than the frame so the parallax drift never shows an edge */
+.pgi-inner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -10%;
+  right: -10%;
+  will-change: transform;
+}
+
 .pgi-img {
   object-fit: cover;
-  transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .pgi:hover .pgi-img {
-  transform: scale(1.05);
+  transform: scale(1.06);
 }
+
+.pgi-num {
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  font-family: 'Glorifydemo', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.pf-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 34px;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.pf-current { font-family: 'Glorifydemo', sans-serif; font-size: 1.1rem; letter-spacing: 0.08em; color: var(--fg); }
+.pf-progress {
+  width: min(260px, 40vw);
+  height: 1px;
+  background: rgba(28, 20, 16, 0.15);
+}
+.pf-progress-bar {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.pf-hint { opacity: 0.7; }
+@media (max-width: 480px) { .pf-hint { display: none; } }
 
 .carousel-controls {
   display: flex;
@@ -598,11 +720,15 @@ footer {
 
 .footer-logo {
   font-family: 'Glorifydemo', sans-serif;
-  font-size: 2.4rem;
+  font-size: clamp(1.6rem, 6.4vw, 2.4rem);
   letter-spacing: 0.18em;
   line-height: 1;
   color: #f0ebe3;
 }
+
+.footer-logo .word { white-space: nowrap; }
+.footer-logo .ch { display: inline-block; }
+.footer-logo { overflow: hidden; }
 
 .footer-tagline {
   margin-top: 12px;
@@ -666,9 +792,9 @@ footer {
 /* ─── MASK — intermediate screens (861px–1750px) ── */
 /* auto Xvh sizes are too narrow at these widths; switch to cover with face-focused positions */
 @media (min-width: 861px) and (max-width: 1750px) {
-  #w1l { background-size: cover; background-position: 70% 25%; }
-  #w2l { background-size: cover; background-position: 70% 20%; }
-  #w2r { background-size: cover; background-position: 30% 25%; }
+  #w1l .mwin-bg { background-size: cover; background-position: 70% 25%; }
+  #w2l .mwin-bg { background-size: cover; background-position: 70% 20%; }
+  #w2r .mwin-bg { background-size: cover; background-position: 30% 25%; }
 }
 
 /* ─── RESPONSIVE ──────────────────────── */
@@ -677,7 +803,7 @@ footer {
   .nav.scrolled { padding: 13px 24px; }
   .nav-links { display: none; }
   .hero-content { left: 6vw; }
-  .about { grid-template-columns: 1fr; overflow: hidden; }
+  .about { grid-template-columns: 1fr; overflow: clip; }
   .about-image { aspect-ratio: 4/3; width: 100%; }
   .about-text { padding: 80px 60px; }
   .services-hdr { flex-direction: column; gap: 20px; align-items: flex-start; }
@@ -698,22 +824,23 @@ footer {
   .mword { font-size: clamp(48px, 10vw, 80px); line-height: 80px; }
   .mcontainer { padding-right: 0; }
   /* switch all windows to cover on medium screens so face always fills the crop */
-  .mwin {
-    background-size: cover !important;
-    background-attachment: fixed;
-  }
-  #w1l { background-position: 85% 20% !important; }
-  #w1r { background-position: center 15% !important; }
-  #w2l { background-position: 80% 15% !important; }
-  #w2r { background-position: 20% 20% !important; }
+  .mwin-bg { background-size: cover !important; }
+  #w1l .mwin-bg { background-image: url('/images/mask/w1l-m.jpg'); }
+  #w1r .mwin-bg { background-image: url('/images/mask/w1r-m.jpg'); }
+  #w2l .mwin-bg { background-image: url('/images/mask/w2l-m.jpg'); }
+  #w2r .mwin-bg { background-image: url('/images/mask/w2r-m.jpg'); }
+  #w1l .mwin-bg { background-position: 85% 20% !important; }
+  #w1r .mwin-bg { background-position: center 15% !important; }
+  #w2l .mwin-bg { background-position: 80% 15% !important; }
+  #w2r .mwin-bg { background-position: 20% 20% !important; }
 }
 
 @media (max-width: 480px) {
   .about-text { padding: 60px 28px; }
   .about-image { aspect-ratio: 3/4; }
 
-  /* Switch mask section to simple 2×2 grid — avoid broken fixed attachment on mobile */
-  .mask-section { height: auto !important; overflow-x: hidden; overflow-y: visible; }
+  /* Mask section as a 2×2 grid; the fixed-layer reveal still works here */
+  .mask-section { height: auto !important; overflow-x: clip; overflow-y: visible; }
 
   .mcontainer {
     display: grid;
@@ -729,10 +856,11 @@ footer {
     padding: 40px 16px 48px;
   }
 
-  .mwin {
-    background-attachment: scroll !important;
+  .mwin-bg {
     background-size: cover !important;
     background-position: center !important;
+  }
+  .mwin {
     height: 180px;
     width: auto !important;
     top: 0 !important;
@@ -741,8 +869,10 @@ footer {
   }
 
   #w1l { grid-area: w1l; }
-  #w1r { grid-area: w1r; background-position: center top !important; }
-  #w2l { grid-area: w2l; background-position: center top !important; }
+  #w1r { grid-area: w1r; }
+  #w1r .mwin-bg { background-position: center top !important; }
+  #w2l { grid-area: w2l; }
+  #w2l .mwin-bg { background-position: center top !important; }
   #w2r { grid-area: w2r; }
 
   .mphr {
@@ -769,4 +899,76 @@ footer {
 
   #elegancia  { grid-area: eleg; }
   #excelencia { grid-area: excel; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-scroll-line { animation: none; }
+}
+
+/* ════════════════════════════════════════
+   SCROLL-LINKED MOTION — native CSS scroll timelines
+   The browser evaluates these together with the scroll itself, so they stay
+   smooth even when iOS caps JavaScript at 30fps (Low Power Mode).
+   Browsers without support fall back to GSAP (see scrollDriven()).
+   Timelines are named on a non-animated ancestor so the measurement never
+   depends on the element that moves.
+   ════════════════════════════════════════ */
+.mword-in { display: inline-block; }
+
+@keyframes hero-drift  { to { transform: translateY(18%); } }
+@keyframes hero-lift   { to { transform: translateY(-90px); opacity: 0; } }
+@keyframes about-drift { from { translate: 0 -5%; } to { translate: 0 5%; } }
+@keyframes word-rtl    { from { transform: translateX(60vw); }  to { transform: translateX(-120vw); } }
+@keyframes word-ltr    { from { transform: translateX(-120vw); } to { transform: translateX(60vw); } }
+@keyframes pf-x        { to { transform: translateX(calc(var(--pf-dist, 0px) * -1)); } }
+@keyframes pf-bar      { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pgi-drift   { from { transform: translateX(-8%); } to { transform: translateX(8%); } }
+
+@supports (animation-timeline: view()) {
+  .pf-wrap { view-timeline: --pf; }
+  .carousel-track {
+    animation: pf-x linear both;
+    animation-timeline: --pf;
+    animation-range: contain 0% contain 100%;
+  }
+  .pf-progress-bar {
+    animation: pf-bar linear both;
+    animation-timeline: --pf;
+    animation-range: contain 0% contain 100%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero { view-timeline: --hero; }
+    .hero-img-wrapper {
+      animation: hero-drift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 100%;
+    }
+    .hero-content {
+      animation: hero-lift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 70%;
+    }
+
+    .about-image { view-timeline: --about-img; }
+    .about-image-el {
+      animation: about-drift linear both;
+      animation-timeline: --about-img;
+      animation-range: cover 0% cover 100%;
+    }
+
+    .mword { view-timeline: --word; }
+    .mword-in {
+      animation: word-rtl linear both;
+      animation-timeline: --word;
+      animation-range: cover 0% cover 100%;
+      will-change: transform;
+    }
+    #excelencia .mword-in { animation-name: word-ltr; }
+
+    .pgi-inner {
+      animation: pgi-drift linear both;
+      animation-timeline: --pf;
+    }
+  }
 }

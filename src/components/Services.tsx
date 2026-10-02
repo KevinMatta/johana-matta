@@ -2,17 +2,26 @@
 
 import { useEffect } from "react";
 import gsap from "gsap";
+import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
 
 export default function Services() {
   useEffect(() => {
     const initGsap = async () => {
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
+      await loadScrollTrigger();
+      if (reducedMotion()) return;
 
       gsap
-        .timeline({ scrollTrigger: { trigger: ".services", start: "top 76%" } })
-        .from(".services-title", { opacity: 0, y: 24, duration: 0.55, ease: "power2.out" })
-        .from(".service",        { opacity: 0, y: 24, duration: 0.45, stagger: 0.07 }, "-=.3");
+        .timeline({ scrollTrigger: { trigger: ".services", start: "top 72%" } })
+        .from(".services .section-label", { opacity: 0, letterSpacing: "1em", duration: 1, ease: "power3.out" })
+        .from(".services-title .line-in", { yPercent: 115, duration: 1.1, ease: "expo.out" }, "-=.75")
+        .from(".services-catalog-btn",    { opacity: 0, x: 24, duration: 0.7, ease: "power3.out" }, "-=.6");
+
+      gsap.utils.toArray<HTMLElement>(".service").forEach((el, i) => {
+        gsap.timeline({ scrollTrigger: { trigger: el, start: "top 85%" }, delay: (i % 2) * 0.12 })
+          .from(el.querySelector(".service-line"), { scaleX: 0, duration: 1.2, ease: "expo.inOut" })
+          .from(el.querySelector(".service-num"),  { yPercent: 60, opacity: 0, duration: 0.8, ease: "power3.out" }, 0.3)
+          .from(el.querySelectorAll(".service-name, .service-desc"), { y: 24, opacity: 0, duration: 0.8, ease: "power3.out", stagger: 0.08 }, 0.4);
+      });
     };
 
     initGsap();
@@ -46,7 +55,7 @@ export default function Services() {
       <div className="services-hdr">
         <div>
           <span className="section-label" style={{ color: "#8a7145" }}>Servicios</span>
-          <h2 className="services-title">Propuestas de Belleza</h2>
+          <h2 className="services-title"><span className="line"><span className="line-in">Propuestas de Belleza</span></span></h2>
         </div>
         <a
           href="/Cat%C3%A1logo%20de%20Servicios.pdf"
@@ -64,6 +73,7 @@ export default function Services() {
       <div className="services-grid">
         {services.map((s) => (
           <div className="service" key={s.num}>
+            <span className="service-line" aria-hidden="true" />
             <div className="service-num">{s.num}</div>
             <div>
               <h3 className="service-name">

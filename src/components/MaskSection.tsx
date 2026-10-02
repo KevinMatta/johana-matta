@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import gsap from "gsap";
+import { loadScrollTrigger, reducedMotion, scrollDriven } from "@/lib/motion";
 
 export default function MaskSection() {
   useEffect(() => {
@@ -18,17 +19,43 @@ export default function MaskSection() {
       section.style.height = lBot - sTop + 60 + "px";
     };
 
+    let rt: ReturnType<typeof setTimeout>;
+    const onResize = () => { clearTimeout(rt); rt = setTimeout(clipSection, 150); };
     clipSection();
     window.addEventListener("load",   clipSection);
-    window.addEventListener("resize", clipSection);
+    window.addEventListener("resize", onResize);
+
+    /* The fixed image layers only need to exist while their window is on screen */
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => (e.target as HTMLElement).classList.toggle("in-view", e.isIntersecting)),
+      { rootMargin: "20% 0px" }
+    );
+    document.querySelectorAll(".mwin").forEach((w) => io.observe(w));
 
     const initGsap = async () => {
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
+      await loadScrollTrigger();
 
       const mobile = window.innerWidth <= 480;
       const startOffset = mobile ? "top 90%" : "top bottom";
       const endOffset   = mobile ? "bottom 10%" : "bottom top";
+
+      if (!reducedMotion()) {
+        /* Each window "opens" from the bottom as it enters, while the image settles */
+        gsap.utils.toArray<HTMLElement>(".mwin").forEach((win) => {
+          gsap.timeline({ scrollTrigger: { trigger: win, start: "top 88%" } })
+            .fromTo(win, { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.3, ease: "expo.out" })
+            .from(win.querySelector(".mwin-bg"), { scale: 1.18, duration: 1.8, ease: "expo.out" }, 0);
+        });
+
+        gsap.utils.toArray<HTMLElement>(".mphr").forEach((el) => {
+          gsap.from(el, {
+            opacity: 0, y: 40, duration: 1.1, ease: "power3.out",
+            scrollTrigger: { trigger: el, start: "top 90%" },
+          });
+        });
+      }
+
+      if (scrollDriven()) return;
 
       /* ELEGANCIA — sweeps right → left as you scroll */
       gsap.fromTo(
@@ -41,7 +68,7 @@ export default function MaskSection() {
             trigger: "#elegancia",
             start: startOffset,
             end: endOffset,
-            scrub: 0.6,
+            scrub: 0.4,
           },
         }
       );
@@ -57,7 +84,7 @@ export default function MaskSection() {
             trigger: "#excelencia",
             start: startOffset,
             end: endOffset,
-            scrub: 0.6,
+            scrub: 0.4,
           },
         }
       );
@@ -67,7 +94,9 @@ export default function MaskSection() {
 
     return () => {
       window.removeEventListener("load",   clipSection);
-      window.removeEventListener("resize", clipSection);
+      clearTimeout(rt);
+      io.disconnect();
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
@@ -78,7 +107,7 @@ export default function MaskSection() {
       <div className="mcontainer">
 
         {/* ── Pair 1 left ── */}
-        <div className="mwin" id="w1l" />
+        <div className="mwin" id="w1l"><div className="mwin-bg" /></div>
         <p className="mphr p1l">
           Cada momento merece
           <br />
@@ -86,10 +115,10 @@ export default function MaskSection() {
         </p>
 
         {/* ── ELEGANCIA ── */}
-        <div className="mword" id="elegancia">ELEGANCIA</div>
+        <div className="mword" id="elegancia"><span className="mword-in">ELEGANCIA</span></div>
 
         {/* ── Pair 1 right ── */}
-        <div className="mwin" id="w1r" />
+        <div className="mwin" id="w1r"><div className="mwin-bg" /></div>
         <p className="mphr p1r">
           para brillar
           <br />
@@ -97,7 +126,7 @@ export default function MaskSection() {
         </p>
 
         {/* ── Pair 2 left ── */}
-        <div className="mwin" id="w2l" />
+        <div className="mwin" id="w2l"><div className="mwin-bg" /></div>
         <p className="mphr p2l">
           tu mejor imagen,
           <br />
@@ -105,10 +134,10 @@ export default function MaskSection() {
         </p>
 
         {/* ── EXCELENCIA ── */}
-        <div className="mword" id="excelencia">EXCELENCIA</div>
+        <div className="mword" id="excelencia"><span className="mword-in">EXCELENCIA</span></div>
 
         {/* ── Pair 2 right ── */}
-        <div className="mwin" id="w2r" />
+        <div className="mwin" id="w2r"><div className="mwin-bg" /></div>
         <p className="mphr p2r">
           cada detalle cuenta
           <br />

@@ -2,27 +2,25 @@
 
 import { useEffect } from "react";
 import gsap from "gsap";
+import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
 
 export default function Footer() {
   useEffect(() => {
     const initGsap = async () => {
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
+      await loadScrollTrigger();
+      if (reducedMotion()) return;
 
-      gsap.from([".footer-logo", ".footer-tagline"], {
-        opacity: 0,
-        y: 22,
-        duration: 0.9,
-        stagger: 0.12,
-        scrollTrigger: { trigger: "footer", start: "top 84%" },
-      });
+      gsap.timeline({ scrollTrigger: { trigger: "footer", start: "top 84%" } })
+        .from(".footer-logo .ch", { yPercent: 110, opacity: 0, duration: 0.9, ease: "expo.out", stagger: 0.035 })
+        .from(".footer-tagline",  { opacity: 0, letterSpacing: "1em", duration: 1, ease: "power3.out" }, "-=.6");
 
       gsap.from(".contact-item", {
         opacity: 0,
-        y: 18,
-        duration: 0.7,
-        stagger: 0.1,
-        scrollTrigger: { trigger: ".footer-contacts", start: "top 86%" },
+        y: 30,
+        duration: 0.9,
+        ease: "power3.out",
+        stagger: 0.12,
+        scrollTrigger: { trigger: ".footer-contacts", start: "top 88%" },
       });
     };
 
@@ -34,7 +32,15 @@ export default function Footer() {
       <div className="footer-inner">
 
         <div className="footer-brand">
-          <div className="footer-logo">JOHANA MATTA</div>
+          <div className="footer-logo" aria-label="Johana Matta">
+            {/* letters grouped per word so a line can only break between words */}
+            {["JOHANA", "MATTA"].map((word, w) => (
+              <span className="word" aria-hidden="true" key={word}>
+                {w > 0 && " "}
+                {word.split("").map((c, i) => <span className="ch" key={i}>{c}</span>)}
+              </span>
+            ))}
+          </div>
           <div className="footer-tagline">Makeup Artistry</div>
         </div>
 

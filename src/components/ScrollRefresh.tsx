@@ -6,6 +6,8 @@ export default function ScrollRefresh() {
   useEffect(() => {
     const refresh = async () => {
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+      // Mobile URL-bar show/hide fires resize; refreshing on it causes jank
+      ScrollTrigger.config({ ignoreMobileResize: true });
       ScrollTrigger.refresh();
     };
 
