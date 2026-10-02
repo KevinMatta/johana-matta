@@ -5,7 +5,7 @@
 export const DEBUG_FLAGS = {
   nomask: "Sin imágenes de ventanas",
   nowords: "Sin ELEGANCIA / EXCELENCIA",
-  cssw: "Palabras con CSS (sin JS)",
+  nocss: "Forzar GSAP (sin animación CSS)",
   noparallax: "Sin parallax",
   noanim: "Sin GSAP (todo apagado)",
   normalize: "normalizeScroll",

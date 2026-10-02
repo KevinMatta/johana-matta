@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
-import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { loadScrollTrigger, reducedMotion, scrollDriven } from "@/lib/motion";
 import { dbg } from "@/lib/debug";
 
 const images = [
@@ -43,11 +43,28 @@ export default function Portfolio() {
       const still = reducedMotion();
 
       const count = images.length;
+      const css = scrollDriven();
 
       const setWrapperHeight = () => {
-        if (!wrapperRef.current || !outerRef.current) return;
-        const dist = calcScrollDist(outerRef.current, count);
+        if (!wrapperRef.current || !outerRef.current || !trackRef.current) return;
+        const outer = outerRef.current;
+        const dist = calcScrollDist(outer, count);
         wrapperRef.current.style.height = `${dist + window.innerHeight}px`;
+        if (!css || dist <= 0) return;
+
+        // CSS scroll timeline: track travel distance + the slice of the
+        // timeline during which each card is on screen (for its inner drift)
+        trackRef.current.style.setProperty("--pf-dist", `${dist}px`);
+        const vw = outer.clientWidth;
+        const cards = Array.from(trackRef.current.children) as HTMLElement[];
+        cards.forEach((card) => {
+          const left = card.offsetLeft;
+          const from = ((left - vw) / dist) * 100;
+          const to = ((left + card.offsetWidth) / dist) * 100;
+          card.querySelector<HTMLElement>(".pgi-inner")?.style.setProperty(
+            "animation-range", `contain ${from.toFixed(2)}% contain ${to.toFixed(2)}%`
+          );
+        });
       };
 
       setWrapperHeight();
@@ -69,7 +86,21 @@ export default function Portfolio() {
           scrollTrigger: { trigger: wrapperRef.current, start: "top 70%" },
         });
 
-        if (outerRef.current && trackRef.current && wrapperRef.current) {
+        if (css && wrapperRef.current && outerRef.current) {
+          // Movement is pure CSS (see .pf-wrap); JS only updates the counter
+          const counter = sectionRef.current?.querySelector<HTMLElement>(".pf-current");
+          let shown = 1;
+          ScrollTrigger.create({
+            trigger: wrapperRef.current,
+            start: "top top",
+            end: () => `+=${calcScrollDist(outerRef.current!, count)}`,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              const n = Math.min(count, 1 + Math.round(self.progress * (count - 1)));
+              if (counter && n !== shown) { shown = n; counter.textContent = String(n).padStart(2, "0"); }
+            },
+          });
+        } else if (outerRef.current && trackRef.current && wrapperRef.current) {
           const setBar = gsap.quickSetter(".pf-progress-bar", "scaleX");
           const counter = sectionRef.current?.querySelector<HTMLElement>(".pf-current");
           let shown = 1;
@@ -129,7 +160,7 @@ export default function Portfolio() {
   }, []);
 
   return (
-    <div ref={wrapperRef}>
+    <div className="pf-wrap" ref={wrapperRef}>
       <section className="portfolio" id="portfolio" ref={sectionRef}>
         <div className="portfolio-hdr">
           <span className="section-label">Portafolio</span>

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
-import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { loadScrollTrigger, reducedMotion, scrollDriven } from "@/lib/motion";
 import { dbg } from "@/lib/debug";
 
 export default function Hero() {
@@ -23,7 +23,8 @@ export default function Hero() {
         .from(".hero-tagline",   { opacity: 0, y: 14, duration: 0.8 }, 0.95)
         .from(".hero-scroll-wrap", { opacity: 0, duration: 0.8 }, 1.2);
 
-      if (dbg("noparallax")) return;
+      // Native CSS scroll timeline handles the scroll part (see .hero-img-wrapper)
+      if (dbg("noparallax") || scrollDriven()) return;
 
       // Scroll: photo drifts down, text lifts away
       gsap.to(wrapperRef.current, {

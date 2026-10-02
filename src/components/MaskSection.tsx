@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import gsap from "gsap";
-import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
+import { loadScrollTrigger, reducedMotion, scrollDriven } from "@/lib/motion";
 import { dbg } from "@/lib/debug";
 
 export default function MaskSection() {
@@ -56,7 +56,7 @@ export default function MaskSection() {
         });
       }
 
-      if (dbg("nowords") || dbg("cssw")) return;
+      if (dbg("nowords") || scrollDriven()) return;
 
       /* ELEGANCIA — sweeps right → left as you scroll */
       gsap.fromTo(
@@ -116,7 +116,7 @@ export default function MaskSection() {
         </p>
 
         {/* ── ELEGANCIA ── */}
-        <div className="mword" id="elegancia">ELEGANCIA</div>
+        <div className="mword" id="elegancia"><span className="mword-in">ELEGANCIA</span></div>
 
         {/* ── Pair 1 right ── */}
         <div className="mwin" id="w1r"><div className="mwin-bg" /></div>
@@ -135,7 +135,7 @@ export default function MaskSection() {
         </p>
 
         {/* ── EXCELENCIA ── */}
-        <div className="mword" id="excelencia">EXCELENCIA</div>
+        <div className="mword" id="excelencia"><span className="mword-in">EXCELENCIA</span></div>
 
         {/* ── Pair 2 right ── */}
         <div className="mwin" id="w2r"><div className="mwin-bg" /></div>

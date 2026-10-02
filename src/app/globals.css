@@ -295,7 +295,7 @@ body {
    MASK SCROLL SECTION — Parallax Effect
    Structure mirrors parallax-effect-animation exactly:
    all children position:relative with top/left offsets,
-   overflow:hidden on section clips overflow.
+   overflow:clip on section clips overflow.
    Each window clips (clip-path) a position:fixed image layer, which
    looks exactly like background-attachment:fixed but is composited
    by the GPU instead of repainted on every scroll frame.
@@ -303,7 +303,9 @@ body {
 .mask-section {
   position: relative;
   background: var(--light);
-  overflow: hidden;
+  /* clip, not hidden: hidden would make it a scroll container and CSS
+     scroll timelines inside would measure against it instead of the page */
+  overflow: clip;
 }
 
 .mcontainer {
@@ -801,7 +803,7 @@ footer {
   .nav.scrolled { padding: 13px 24px; }
   .nav-links { display: none; }
   .hero-content { left: 6vw; }
-  .about { grid-template-columns: 1fr; overflow: hidden; }
+  .about { grid-template-columns: 1fr; overflow: clip; }
   .about-image { aspect-ratio: 4/3; width: 100%; }
   .about-text { padding: 80px 60px; }
   .services-hdr { flex-direction: column; gap: 20px; align-items: flex-start; }
@@ -838,7 +840,7 @@ footer {
   .about-image { aspect-ratio: 3/4; }
 
   /* Mask section as a 2×2 grid; the fixed-layer reveal still works here */
-  .mask-section { height: auto !important; overflow-x: hidden; overflow-y: visible; }
+  .mask-section { height: auto !important; overflow-x: clip; overflow-y: visible; }
 
   .mcontainer {
     display: grid;
@@ -906,18 +908,6 @@ footer {
 /* ─── Debug switches (?debug=…) ── */
 html.dbg-nomask .mwin-bg { display: none; }
 
-/* ?debug=cssw — words driven by CSS scroll-driven animations (compositor, no JS) */
-@keyframes word-rtl { from { transform: translateX(60vw); }  to { transform: translateX(-120vw); } }
-@keyframes word-ltr { from { transform: translateX(-120vw); } to { transform: translateX(60vw); } }
-@supports (animation-timeline: view()) {
-  html.dbg-cssw #elegancia,
-  html.dbg-cssw #excelencia {
-    animation: word-rtl linear both;
-    animation-timeline: view();
-    animation-range: cover;
-  }
-  html.dbg-cssw #excelencia { animation-name: word-ltr; }
-}
 
 .dbg-panel {
   position: fixed;
@@ -941,3 +931,76 @@ html.dbg-nomask .mwin-bg { display: none; }
 .dbg-actions { display: flex; gap: 6px; }
 .dbg-live { font-size: 15px; font-weight: bold; margin-top: 4px; }
 .dbg-live.bad { color: #ff6b6b; }
+
+/* ════════════════════════════════════════
+   SCROLL-LINKED MOTION — native CSS scroll timelines
+   The browser evaluates these together with the scroll itself, so they stay
+   smooth even when iOS caps JavaScript at 30fps (Low Power Mode).
+   Browsers without support fall back to GSAP (see scrollDriven()).
+   Timelines are named on a non-animated ancestor so the measurement never
+   depends on the element that moves.
+   ════════════════════════════════════════ */
+.mword-in { display: inline-block; }
+
+@keyframes hero-drift  { to { transform: translateY(18%); } }
+@keyframes hero-lift   { to { transform: translateY(-90px); opacity: 0; } }
+@keyframes about-drift { from { translate: 0 -5%; } to { translate: 0 5%; } }
+@keyframes word-rtl    { from { transform: translateX(60vw); }  to { transform: translateX(-120vw); } }
+@keyframes word-ltr    { from { transform: translateX(-120vw); } to { transform: translateX(60vw); } }
+@keyframes pf-x        { to { transform: translateX(calc(var(--pf-dist, 0px) * -1)); } }
+@keyframes pf-bar      { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pgi-drift   { from { transform: translateX(-8%); } to { transform: translateX(8%); } }
+
+@supports (animation-timeline: view()) {
+  html:not(.dbg-nocss) .pf-wrap { view-timeline: --pf; }
+  html:not(.dbg-nocss) .carousel-track {
+    animation: pf-x linear both;
+    animation-timeline: --pf;
+    animation-range: contain 0% contain 100%;
+  }
+  html:not(.dbg-nocss) .pf-progress-bar {
+    animation: pf-bar linear both;
+    animation-timeline: --pf;
+    animation-range: contain 0% contain 100%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.dbg-nocss) .hero { view-timeline: --hero; }
+    html:not(.dbg-nocss) .hero-img-wrapper {
+      animation: hero-drift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 100%;
+    }
+    html:not(.dbg-nocss) .hero-content {
+      animation: hero-lift linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 70%;
+    }
+
+    html:not(.dbg-nocss) .about-image { view-timeline: --about-img; }
+    html:not(.dbg-nocss) .about-image-el {
+      animation: about-drift linear both;
+      animation-timeline: --about-img;
+      animation-range: cover 0% cover 100%;
+    }
+
+    html:not(.dbg-nocss) .mword { view-timeline: --word; }
+    html:not(.dbg-nocss) .mword-in {
+      animation: word-rtl linear both;
+      animation-timeline: --word;
+      animation-range: cover 0% cover 100%;
+      will-change: transform;
+    }
+    html:not(.dbg-nocss) #excelencia .mword-in { animation-name: word-ltr; }
+
+    html:not(.dbg-nocss):not(.dbg-noparallax) .pgi-inner {
+      animation: pgi-drift linear both;
+      animation-timeline: --pf;
+    }
+  }
+}
+html.dbg-nowords .mword-in { animation: none !important; }
+html.dbg-noparallax .hero-img-wrapper,
+html.dbg-noparallax .hero-content,
+html.dbg-noparallax .about-image-el { animation: none !important; }
+html.dbg-noanim * { animation: none !important; }
