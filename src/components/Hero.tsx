@@ -3,32 +3,36 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
+import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
 
 export default function Hero() {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const initGsap = async () => {
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
+      await loadScrollTrigger();
+      if (reducedMotion()) return;
 
-      // Entrance animations
-      const tl = gsap.timeline({ delay: 0.1 });
-      tl.from(".eyebrow",      { opacity: 0, y: 14, duration: 0.45 })
-        .from(".hero-name",    { opacity: 0, y: 36, duration: 0.65, ease: "power2.out" }, "-=.25")
-        .from(".hero-tagline", { opacity: 0, y: 14, duration: 0.45 }, "-=.3")
-        .from(".hero-scroll",  { opacity: 0, duration: 0.4 }, "-=.2");
+      // Entrance: photo settles, name rises out of a mask line by line
+      gsap.timeline({ delay: 0.05 })
+        .from(".hero-img",       { scale: 1.22, duration: 2.4, ease: "expo.out" })
+        .from(".nav",            { yPercent: -100, opacity: 0, duration: 0.9, ease: "power3.out" }, 0.3)
+        .from(".eyebrow",        { opacity: 0, letterSpacing: "1.1em", duration: 1.2, ease: "power3.out" }, 0.35)
+        .from(".hero-name .line-in", { yPercent: 115, rotate: 3, duration: 1.2, ease: "expo.out", stagger: 0.12 }, 0.45)
+        .from(".hero-tagline",   { opacity: 0, y: 14, duration: 0.8 }, 0.95)
+        .from(".hero-scroll-wrap", { opacity: 0, duration: 0.8 }, 1.2);
 
-      // Hero parallax — animate wrapper so next/image span inside moves
+      // Scroll: photo drifts down, text lifts away
       gsap.to(wrapperRef.current, {
         yPercent: 18,
         ease: "none",
-        scrollTrigger: {
-          trigger: ".hero",
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
+        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true },
+      });
+      gsap.to(".hero-content", {
+        y: -90,
+        opacity: 0,
+        ease: "none",
+        scrollTrigger: { trigger: ".hero", start: "top top", end: "70% top", scrub: true },
       });
     };
 
@@ -52,13 +56,15 @@ export default function Hero() {
       <div className="hero-content">
         <span className="eyebrow">Makeup Artistry</span>
         <h1 className="hero-name">
-          <em>Johana</em>
-          <br />
-          Matta
+          <span className="line"><span className="line-in"><em>Johana</em></span></span>
+          <span className="line"><span className="line-in">Matta</span></span>
         </h1>
         <p className="hero-tagline">El arte de revelar tu mejor versión</p>
       </div>
-      <p className="hero-scroll">Scroll</p>
+      <div className="hero-scroll-wrap" aria-hidden="true">
+        <p className="hero-scroll">Scroll</p>
+        <span className="hero-scroll-line" />
+      </div>
     </section>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
+import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
 
 function countUp(el: HTMLElement, end: number, duration: number) {
   const startTime = performance.now();
@@ -21,21 +22,26 @@ export default function About() {
 
   useEffect(() => {
     const initGsap = async () => {
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
+      await loadScrollTrigger();
+      if (reducedMotion()) return;
 
       gsap
         .timeline({ scrollTrigger: { trigger: ".about", start: "top 70%" } })
-        .from(".section-label",  { opacity: 0, y: 14, duration: 0.4 })
-        .from(".about-headline", { opacity: 0, y: 28, duration: 0.6, ease: "power2.out" }, "-=.2")
-        .from(".about-body",     { opacity: 0, y: 16, duration: 0.45, stagger: 0.08 }, "-=.3")
-        .from(".about-stats",    { opacity: 0, y: 16, duration: 0.4 }, "-=.25");
+        .from(".about .section-label", { opacity: 0, letterSpacing: "1em", duration: 1, ease: "power3.out" })
+        .from(".about-signature",       { opacity: 0, y: 12, duration: 0.6 }, "-=.7")
+        .from(".about-headline .line-in", { yPercent: 115, duration: 1.1, ease: "expo.out", stagger: 0.1 }, "-=.6")
+        .from(".about-body",            { opacity: 0, y: 20, duration: 0.7, stagger: 0.1 }, "-=.7")
+        .from(".about-stats > div",     { opacity: 0, y: 20, duration: 0.6, stagger: 0.1 }, "-=.4");
 
-      gsap.from(".about-image-el", {
-        scale: 1.06,
-        duration: 0.9,
-        ease: "power2.out",
-        scrollTrigger: { trigger: ".about-image", start: "top 85%" },
+      // Photo is unveiled like a curtain, then drifts with the scroll
+      gsap.timeline({ scrollTrigger: { trigger: ".about-image", start: "top 80%" } })
+        .fromTo(".about-image", { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.5, ease: "expo.inOut" })
+        .fromTo(".about-image-el", { scale: 1.4 }, { scale: 1.12, duration: 2, ease: "expo.out" }, 0.2);
+
+      gsap.fromTo(".about-image-el", { yPercent: -5 }, {
+        yPercent: 5,
+        ease: "none",
+        scrollTrigger: { trigger: ".about-image", start: "top bottom", end: "bottom top", scrub: true },
       });
     };
 
@@ -72,11 +78,9 @@ export default function About() {
         <span className="section-label">La Artista</span>
         <p className="about-signature">Maquillaje signature: <em>Soft Glam</em></p>
         <h2 className="about-headline">
-          Cada rostro
-          <br />
-          es un lienzo
-          <br />
-          <em>único</em>
+          <span className="line"><span className="line-in">Cada rostro</span></span>
+          <span className="line"><span className="line-in">es un lienzo</span></span>
+          <span className="line"><span className="line-in"><em>único</em></span></span>
         </h2>
         <p className="about-body">
           Con más de una década perfeccionando el arte del maquillaje, he desarrollado

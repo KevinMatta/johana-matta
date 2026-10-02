@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
+import gsap from "gsap";
+import { loadScrollTrigger, reducedMotion } from "@/lib/motion";
 
 const images = [
   "/images/portfolio-03.jpg",
@@ -17,170 +19,148 @@ const images = [
   "/images/portfolio-29.jpeg",
 ];
 
-const pad = (n: number) => String(n).padStart(2, "0");
+const GAP = 4;
+
+function calcScrollDist(outerEl: HTMLDivElement, count: number) {
+  const vw = outerEl.clientWidth;
+  const perPage = vw < 480 ? 1 : vw < 860 ? 2 : 3;
+  const itemW = (vw - (perPage - 1) * GAP) / perPage;
+  return Math.max(0, count * itemW + (count - 1) * GAP - vw);
+}
 
 export default function Portfolio() {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
-  const lockUntil = useRef(0);
-  const targetRef = useRef(0); // latest requested slide, so fast clicks keep stacking
-  const count = images.length;
+  const wrapperRef  = useRef<HTMLDivElement>(null);
+  const sectionRef  = useRef<HTMLElement>(null);
+  const outerRef    = useRef<HTMLDivElement>(null);
+  const trackRef    = useRef<HTMLDivElement>(null);
 
-  const slides = () =>
-    Array.from(trackRef.current?.children ?? []) as HTMLElement[];
-
-  const goTo = useCallback((i: number) => {
-    const track = trackRef.current;
-    const el = track && (Array.from(track.children)[i] as HTMLElement | undefined);
-    if (!track || !el) return;
-    targetRef.current = i;
-    lockUntil.current = performance.now() + 700; // ignore scroll sync mid-animation
-    track.scrollTo({
-      left: el.offsetLeft - (track.clientWidth - el.clientWidth) / 2,
-      behavior: "smooth",
-    });
-  }, []);
-
-  // Track which slide is centred (native scroll + rAF throttle, no scroll-jacking)
   useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const mid = track.scrollLeft + track.clientWidth / 2;
-      let best = 0;
-      let bestDist = Infinity;
-      slides().forEach((el, i) => {
-        const d = Math.abs(el.offsetLeft + el.clientWidth / 2 - mid);
-        if (d < bestDist) { bestDist = d; best = i; }
-      });
-      if (performance.now() > lockUntil.current) targetRef.current = best;
-      setActive(best);
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
-    track.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      track.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
+    let ctx: gsap.Context;
 
-  // Drag-to-scroll for mouse (touch already scrolls natively)
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    let startX = 0, startLeft = 0, dragging = false, moved = false;
+    const init = async () => {
+      const ScrollTrigger = await loadScrollTrigger();
+      const still = reducedMotion();
 
-    const down = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || e.button !== 0) return;
-      dragging = true; moved = false;
-      startX = e.clientX; startLeft = track.scrollLeft;
-    };
-    const move = (e: PointerEvent) => {
-      if (!dragging) return;
-      const dx = e.clientX - startX;
-      if (!moved && Math.abs(dx) > 4) {
-        moved = true;
-        track.classList.add("dragging");
-        track.setPointerCapture(e.pointerId);
-      }
-      if (moved) track.scrollLeft = startLeft - dx;
-    };
-    const up = () => {
-      if (!dragging) return;
-      dragging = false;
-      if (moved) {
-        track.classList.remove("dragging");
-        // re-enable snap and settle on the nearest slide
-        const mid = track.scrollLeft + track.clientWidth / 2;
-        let best = 0, bestDist = Infinity;
-        slides().forEach((el, i) => {
-          const d = Math.abs(el.offsetLeft + el.clientWidth / 2 - mid);
-          if (d < bestDist) { bestDist = d; best = i; }
+      const count = images.length;
+
+      const setWrapperHeight = () => {
+        if (!wrapperRef.current || !outerRef.current) return;
+        const dist = calcScrollDist(outerRef.current, count);
+        wrapperRef.current.style.height = `${dist + window.innerHeight}px`;
+      };
+
+      setWrapperHeight();
+      ScrollTrigger.addEventListener("refresh", setWrapperHeight);
+
+      ctx = gsap.context(() => {
+        gsap.from(".portfolio-hdr", {
+          opacity: 0, y: 22, duration: 0.5, ease: "power2.out",
+          scrollTrigger: { trigger: wrapperRef.current, start: "top 78%" },
         });
-        goTo(best);
-      }
-    };
-    track.addEventListener("pointerdown", down);
-    track.addEventListener("pointermove", move);
-    track.addEventListener("pointerup", up);
-    track.addEventListener("pointercancel", up);
-    return () => {
-      track.removeEventListener("pointerdown", down);
-      track.removeEventListener("pointermove", move);
-      track.removeEventListener("pointerup", up);
-      track.removeEventListener("pointercancel", up);
-    };
-  }, [goTo]);
+        gsap.from(".carousel-outer", {
+          opacity: 0, y: 20, duration: 0.5, ease: "power2.out",
+          scrollTrigger: { trigger: wrapperRef.current, start: "top 78%" },
+          delay: 0.1,
+        });
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowRight") { e.preventDefault(); goTo(Math.min(count - 1, targetRef.current + 1)); }
-    if (e.key === "ArrowLeft")  { e.preventDefault(); goTo(Math.max(0, targetRef.current - 1)); }
-  };
+        gsap.from(".pgi", {
+          yPercent: 14, opacity: 0, duration: 1.1, ease: "power3.out", stagger: 0.09,
+          scrollTrigger: { trigger: wrapperRef.current, start: "top 70%" },
+        });
+
+        if (outerRef.current && trackRef.current && wrapperRef.current) {
+          const setBar = gsap.quickSetter(".pf-progress-bar", "scaleX");
+          const counter = sectionRef.current?.querySelector<HTMLElement>(".pf-current");
+          let shown = 1;
+
+          const dist = calcScrollDist(outerRef.current, count);
+          if (dist > 0) {
+            const scroller = gsap.to(trackRef.current, {
+              x: () => -calcScrollDist(outerRef.current!, count),
+              ease: "none",
+              scrollTrigger: {
+                trigger: wrapperRef.current,
+                start: "top top",
+                end: () => `+=${calcScrollDist(outerRef.current!, count)}`,
+                scrub: 0.5,
+                invalidateOnRefresh: true,
+                onUpdate: (self) => {
+                  setBar(self.progress);
+                  const n = Math.min(count, 1 + Math.round(self.progress * (count - 1)));
+                  if (counter && n !== shown) { shown = n; counter.textContent = String(n).padStart(2, "0"); }
+                },
+              },
+            });
+
+            if (!still) {
+              /* Each photo drifts inside its frame while the track moves */
+              gsap.utils.toArray<HTMLElement>(".pgi").forEach((card) => {
+                gsap.fromTo(
+                  card.querySelector(".pgi-inner"),
+                  { xPercent: -8 },
+                  {
+                    xPercent: 8,
+                    ease: "none",
+                    scrollTrigger: {
+                      trigger: card,
+                      containerAnimation: scroller,
+                      start: "left right",
+                      end: "right left",
+                      scrub: true,
+                    },
+                  }
+                );
+              });
+            }
+          }
+        }
+      }, sectionRef);
+
+      return () => ScrollTrigger.removeEventListener("refresh", setWrapperHeight);
+    };
+
+    const timer = setTimeout(() => { init(); }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (ctx) ctx.revert();
+    };
+  }, []);
 
   return (
-    <section className="portfolio" id="portfolio" aria-roledescription="carrusel" aria-label="Portafolio">
-      <div className="portfolio-hdr">
-        <span className="section-label">Portafolio</span>
-        <h2 className="portfolio-title">Proyectos destacados</h2>
-      </div>
-
-      <div
-        className="carousel-track"
-        ref={trackRef}
-        tabIndex={0}
-        onKeyDown={onKeyDown}
-      >
-        {images.map((src, i) => (
-          <figure
-            className={`pgi${i === active ? " is-active" : ""}`}
-            key={src}
-            aria-roledescription="diapositiva"
-            aria-label={`${i + 1} de ${count}`}
-            onClick={() => i !== active && goTo(i)}
-          >
-            <Image
-              className="pgi-img"
-              src={src}
-              alt={`Trabajo de Johana Matta ${i + 1}`}
-              fill
-              sizes="(max-width:600px) 78vw, (max-width:1100px) 44vw, 30vw"
-              draggable={false}
-              priority={i < 2}
-            />
-            <figcaption className="pgi-num">{pad(i + 1)}</figcaption>
-          </figure>
-        ))}
-      </div>
-
-      <div className="carousel-controls">
-        <button
-          className="carousel-btn"
-          onClick={() => goTo(Math.max(0, targetRef.current - 1))}
-          disabled={active === 0}
-          aria-label="Anterior"
-        >
-          ←
-        </button>
-        <div className="carousel-status" aria-live="polite">
-          <span className="carousel-count">
-            <b>{pad(active + 1)}</b> / {pad(count)}
-          </span>
-          <span className="carousel-progress" aria-hidden="true">
-            <span style={{ transform: `scaleX(${(active + 1) / count})` }} />
-          </span>
+    <div ref={wrapperRef}>
+      <section className="portfolio" id="portfolio" ref={sectionRef}>
+        <div className="portfolio-hdr">
+          <span className="section-label">Portafolio</span>
+          <h2 className="portfolio-title">Proyectos destacados</h2>
         </div>
-        <button
-          className="carousel-btn"
-          onClick={() => goTo(Math.min(count - 1, targetRef.current + 1))}
-          disabled={active === count - 1}
-          aria-label="Siguiente"
-        >
-          →
-        </button>
-      </div>
-    </section>
+
+        <div className="carousel-outer" ref={outerRef}>
+          <div className="carousel-track" ref={trackRef}>
+            {images.map((src, i) => (
+              <div className="pgi" key={i}>
+                <div className="pgi-inner">
+                <Image
+                  className="pgi-img"
+                  src={src}
+                  alt={`Trabajo de Johana Matta ${i + 1}`}
+                  fill
+                  sizes="(max-width:480px) 92vw, (max-width:860px) 46vw, 30vw"
+                  style={{ objectFit: "cover" }}
+                />
+                </div>
+                <span className="pgi-num">{String(i + 1).padStart(2, "0")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="pf-meta" aria-hidden="true">
+          <span className="pf-count"><span className="pf-current">01</span> / {String(images.length).padStart(2, "0")}</span>
+          <span className="pf-progress"><span className="pf-progress-bar" /></span>
+          <span className="pf-hint">Sigue bajando</span>
+        </div>
+      </section>
+    </div>
   );
 }

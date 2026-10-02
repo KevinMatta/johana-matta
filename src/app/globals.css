@@ -37,6 +37,16 @@ body {
   min-height: 100%;
 }
 
+/* ─── Masked line reveal (text rises out of its own line) ── */
+.line {
+  display: block;
+  overflow: hidden;
+  /* room for italics / descenders so the mask does not crop glyphs */
+  padding: 0.06em 0.12em 0.1em 0;
+  margin: -0.06em -0.12em -0.1em 0;
+}
+.line-in { display: block; will-change: transform; }
+
 /* ─── NAV ─────────────────────────────── */
 .nav {
   position: fixed;
@@ -157,10 +167,32 @@ body {
   font-weight: 300;
 }
 
-.hero-scroll {
+.hero-scroll-wrap {
   position: absolute;
   bottom: 44px;
   right: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero-scroll-line {
+  width: 1px;
+  height: 56px;
+  background: rgba(240, 235, 227, 0.5);
+  transform-origin: top;
+  animation: scroll-cue 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes scroll-cue {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  45%  { transform: scaleY(1); transform-origin: top; }
+  55%  { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+.hero-scroll {
   font-size: 0.54rem;
   letter-spacing: 0.38em;
   text-transform: uppercase;
@@ -265,8 +297,9 @@ body {
    Structure mirrors parallax-effect-animation exactly:
    all children position:relative with top/left offsets,
    overflow:hidden on section clips overflow.
-   Each window clips an <img> that is parallax-shifted by GSAP
-   (no background-attachment:fixed — it repaints every frame).
+   Each window clips (clip-path) a position:fixed image layer, which
+   looks exactly like background-attachment:fixed but is composited
+   by the GPU instead of repainted on every scroll frame.
    ════════════════════════════════════════ */
 .mask-section {
   position: relative;
@@ -286,20 +319,26 @@ body {
 .mwin {
   position: relative;
   height: 380px;
-  overflow: hidden;
+  clip-path: inset(0);
   z-index: 2;
 }
 
-/* Taller than the window so the parallax shift never exposes an edge */
-.mwin-img {
-  position: absolute;
+/* Fixed to the viewport → the window "scans" across the image as you scroll */
+.mwin-bg {
+  position: fixed;
+  top: 0;
   left: 0;
-  right: 0;
-  top: -12%;
-  height: 124%;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh; /* ignore mobile URL-bar resizes */
+  background-repeat: no-repeat;
+  background-size: auto 100vh;
+  pointer-events: none;
+  visibility: hidden;
   will-change: transform;
+  transform: translateZ(0);
 }
-.mwin-img img { object-fit: cover; }
+.mwin.in-view .mwin-bg { visibility: visible; }
 
 /* ── Windows — exact Webflow dimensions ── */
 #w1l {
@@ -307,11 +346,21 @@ body {
   top: 25vh;
   left: 7%;
 }
+#w1l .mwin-bg {
+  background-image: url('/images/portfolio-15.jpg');
+  background-size: auto 100vh;
+  background-position: 0% 50%;
+}
 
 #w1r {
   width: 25%;
   top: -11.4vh;
   left: 68%;
+}
+#w1r .mwin-bg {
+  background-image: url('/images/portfolio-05.jpg');
+  background-size: cover;
+  background-position: center 30%;
 }
 
 #w2l {
@@ -319,18 +368,22 @@ body {
   top: -18vh;
   left: 7%;
 }
+#w2l .mwin-bg {
+  background-image: url('/images/portfolio-09.jpg');
+  background-size: auto 140vh;
+  background-position: 0% 65%;
+}
 
 #w2r {
   width: 25%;
   top: -43.6vh;
   left: 68%;
 }
-
-
-#w1l .mwin-img img { object-position: 70% 25%; }
-#w1r .mwin-img img { object-position: center 30%; }
-#w2l .mwin-img img { object-position: 70% 20%; }
-#w2r .mwin-img img { object-position: 30% 25%; }
+#w2r .mwin-bg {
+  background-image: url('/images/portfolio-26.JPG');
+  background-size: auto 110vh;
+  background-position: 65% 50%;
+}
 
 /* ── Small texts — Glorifydemo 40px gold, exact Webflow h2 ── */
 .mphr {
@@ -427,6 +480,7 @@ body {
 }
 
 .service {
+  position: relative;
   padding: 52px 0;
   border-bottom: 1px solid rgba(12, 12, 10, 0.09);
   display: grid;
@@ -461,6 +515,21 @@ body {
   margin-bottom: 14px;
 }
 
+.service-line {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.55;
+  transform-origin: left;
+}
+
+.service-num, .service-name { transition: opacity 0.4s, color 0.4s, transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.service:hover .service-num  { opacity: 0.7; color: var(--gold); }
+.service:hover .service-name { transform: translateX(8px); }
+
 .service-desc {
   font-size: 0.9rem;
   line-height: 1.9;
@@ -469,15 +538,16 @@ body {
 
 /* ─── PORTFOLIO ───────────────────────── */
 .portfolio {
+  position: sticky;
+  top: 0;
   overflow: hidden;
-  padding: 90px 0 80px;
+  padding: 80px 4vw 72px;
   background: var(--light);
 }
 
 .portfolio-hdr {
   text-align: center;
-  margin-bottom: 48px;
-  padding: 0 4vw;
+  margin-bottom: 52px;
 }
 
 .portfolio-title {
@@ -487,115 +557,145 @@ body {
   margin-top: 14px;
 }
 
-.carousel-track {
-  --slide-w: 30vw;
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding: 8px calc((100vw - var(--slide-w)) / 2);
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  cursor: grab;
-  outline: none;
-  -webkit-overflow-scrolling: touch;
+.carousel-outer {
+  overflow: hidden;
+  container-type: inline-size;
 }
-.carousel-track::-webkit-scrollbar { display: none; }
-.carousel-track:focus-visible { outline: 1px solid var(--gold); outline-offset: -1px; }
-.carousel-track.dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+
+.carousel-track {
+  display: flex;
+  gap: 4px;
+  will-change: transform;
+}
 
 .pgi {
-  flex: 0 0 var(--slide-w);
+  flex: 0 0 calc((100cqi - 8px) / 3);
   aspect-ratio: 3/4;
-  position: relative;
   overflow: hidden;
-  margin: 0;
-  scroll-snap-align: center;
-  opacity: 0.45;
-  transform: scale(0.92);
-  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  flex-shrink: 0;
 }
-.pgi.is-active { opacity: 1; transform: none; }
-.pgi:not(.is-active) { cursor: pointer; }
 
-.pgi-img { object-fit: cover; }
+/* Wider than the frame so the parallax drift never shows an edge */
+.pgi-inner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -10%;
+  right: -10%;
+  will-change: transform;
+}
+
+.pgi-img {
+  object-fit: cover;
+  transition: transform 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.pgi:hover .pgi-img {
+  transform: scale(1.06);
+}
 
 .pgi-num {
   position: absolute;
   left: 16px;
-  bottom: 14px;
+  bottom: 12px;
   font-family: 'Glorifydemo', sans-serif;
-  font-size: 1.1rem;
-  letter-spacing: 0.12em;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
   color: #fff;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
   pointer-events: none;
 }
+
+.pf-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 34px;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.pf-current { font-family: 'Glorifydemo', sans-serif; font-size: 1.1rem; letter-spacing: 0.08em; color: var(--fg); }
+.pf-progress {
+  width: min(260px, 40vw);
+  height: 1px;
+  background: rgba(28, 20, 16, 0.15);
+}
+.pf-progress-bar {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.pf-hint { opacity: 0.7; }
+@media (max-width: 480px) { .pf-hint { display: none; } }
 
 .carousel-controls {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  margin-top: 40px;
+  gap: 20px;
+  margin-top: 36px;
 }
 
 .carousel-btn {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--gold);
   background: transparent;
   color: var(--gold);
-  font-size: 1.05rem;
+  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.25s, color 0.25s;
 }
-.carousel-btn:hover:not(:disabled) { background: var(--gold); color: var(--bg); }
-.carousel-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
-.carousel-status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  min-width: 140px;
-}
-.carousel-count {
-  font-size: 0.8rem;
-  letter-spacing: 0.18em;
-  color: var(--gold);
-}
-.carousel-count b { font-weight: 500; font-size: 1rem; }
-.carousel-progress {
-  display: block;
-  width: 100%;
-  height: 1px;
-  background: rgba(12, 12, 10, 0.15);
-}
-.carousel-progress > span {
-  display: block;
-  height: 100%;
+.carousel-btn:hover:not(:disabled) {
   background: var(--gold);
-  transform-origin: left;
-  transition: transform 0.4s ease;
+  color: var(--bg);
 }
 
-@media (max-width: 1100px) {
-  .carousel-track { --slide-w: 44vw; }
+.carousel-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
 }
 
-@media (max-width: 600px) {
-  .portfolio { padding: 64px 0 56px; }
-  .carousel-track { --slide-w: 78vw; gap: 10px; }
-  .portfolio-hdr { margin-bottom: 32px; }
+.carousel-dots {
+  display: flex;
+  gap: 7px;
+  align-items: center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pgi, .carousel-progress > span { transition: none; }
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: var(--gold);
+  opacity: 0.25;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.carousel-dot.active {
+  opacity: 1;
+  transform: scale(1.4);
+}
+
+@media (max-width: 860px) {
+  .pgi { flex: 0 0 calc((100cqi - 4px) / 2); }
+}
+
+@media (max-width: 480px) {
+  .pgi { flex: 0 0 100cqi; }
 }
 
 /* ─── FOOTER ──────────────────────────── */
@@ -624,6 +724,9 @@ footer {
   line-height: 1;
   color: #f0ebe3;
 }
+
+.footer-logo .ch { display: inline-block; }
+.footer-logo { overflow: hidden; }
 
 .footer-tagline {
   margin-top: 12px;
@@ -684,6 +787,14 @@ footer {
   letter-spacing: 0.1em;
 }
 
+/* ─── MASK — intermediate screens (861px–1750px) ── */
+/* auto Xvh sizes are too narrow at these widths; switch to cover with face-focused positions */
+@media (min-width: 861px) and (max-width: 1750px) {
+  #w1l .mwin-bg { background-size: cover; background-position: 70% 25%; }
+  #w2l .mwin-bg { background-size: cover; background-position: 70% 20%; }
+  #w2r .mwin-bg { background-size: cover; background-position: 30% 25%; }
+}
+
 /* ─── RESPONSIVE ──────────────────────── */
 @media (max-width: 860px) {
   .nav { padding: 20px 24px; }
@@ -710,17 +821,19 @@ footer {
   .mphr { font-size: 24px; line-height: 28px; }
   .mword { font-size: clamp(48px, 10vw, 80px); line-height: 80px; }
   .mcontainer { padding-right: 0; }
-  #w1l .mwin-img img { object-position: 85% 20%; }
-  #w1r .mwin-img img { object-position: center 15%; }
-  #w2l .mwin-img img { object-position: 80% 15%; }
-  #w2r .mwin-img img { object-position: 20% 20%; }
+  /* switch all windows to cover on medium screens so face always fills the crop */
+  .mwin-bg { background-size: cover !important; }
+  #w1l .mwin-bg { background-position: 85% 20% !important; }
+  #w1r .mwin-bg { background-position: center 15% !important; }
+  #w2l .mwin-bg { background-position: 80% 15% !important; }
+  #w2r .mwin-bg { background-position: 20% 20% !important; }
 }
 
 @media (max-width: 480px) {
   .about-text { padding: 60px 28px; }
   .about-image { aspect-ratio: 3/4; }
 
-  /* Switch mask section to simple 2×2 grid — avoid broken fixed attachment on mobile */
+  /* Mask section as a 2×2 grid; the fixed-layer reveal still works here */
   .mask-section { height: auto !important; overflow-x: hidden; overflow-y: visible; }
 
   .mcontainer {
@@ -737,6 +850,10 @@ footer {
     padding: 40px 16px 48px;
   }
 
+  .mwin-bg {
+    background-size: cover !important;
+    background-position: center !important;
+  }
   .mwin {
     height: 180px;
     width: auto !important;
@@ -747,10 +864,9 @@ footer {
 
   #w1l { grid-area: w1l; }
   #w1r { grid-area: w1r; }
+  #w1r .mwin-bg { background-position: center top !important; }
   #w2l { grid-area: w2l; }
-  .mwin-img { top: 0; height: 100%; }
-  #w1r .mwin-img img, #w2l .mwin-img img { object-position: center top; }
-  #w1l .mwin-img img, #w2r .mwin-img img { object-position: center; }
+  #w2l .mwin-bg { background-position: center top !important; }
   #w2r { grid-area: w2r; }
 
   .mphr {
@@ -777,4 +893,8 @@ footer {
 
   #elegancia  { grid-area: eleg; }
   #excelencia { grid-area: excel; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-scroll-line { animation: none; }
 }
